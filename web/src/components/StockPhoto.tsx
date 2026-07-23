@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { Wine } from 'lucide-react'
 import { db } from '../db/db'
 import { resolvePhotoUrl } from '../sync/photos'
 
@@ -15,6 +16,19 @@ export function StockPhoto({ stockItemId, photoPath, alt }: Props) {
     [stockItemId],
   )
   const [remoteUrl, setRemoteUrl] = useState<string | null>(null)
+  const [localPreview, setLocalPreview] = useState<string | null>(null)
+
+  // Create the local blob preview in an effect and revoke it on cleanup —
+  // doing this inline on every render leaks an object URL each time.
+  useEffect(() => {
+    if (!pendingUpload) {
+      setLocalPreview(null)
+      return
+    }
+    const url = URL.createObjectURL(pendingUpload.blob)
+    setLocalPreview(url)
+    return () => URL.revokeObjectURL(url)
+  }, [pendingUpload])
 
   useEffect(() => {
     if (pendingUpload || !photoPath) {
@@ -30,10 +44,14 @@ export function StockPhoto({ stockItemId, photoPath, alt }: Props) {
     }
   }, [photoPath, pendingUpload])
 
-  const localPreview = pendingUpload ? URL.createObjectURL(pendingUpload.blob) : null
   const src = localPreview ?? remoteUrl
 
-  if (!src) return <div className="stock-photo stock-photo--empty">No photo</div>
+  if (!src)
+    return (
+      <div className="stock-photo stock-photo--empty">
+        <Wine size={26} strokeWidth={1.5} />
+      </div>
+    )
 
   return (
     <div className="stock-photo">

@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { supabase } from '../../lib/supabase'
+import { Logo } from '../../components/Logo'
 
 export function LoginPage() {
   const [mode, setMode] = useState<'signIn' | 'signUp'>('signIn')
@@ -8,26 +9,37 @@ export function LoginPage() {
   const [storeName, setStoreName] = useState('')
   const [fullName, setFullName] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [info, setInfo] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
+    setInfo(null)
     setLoading(true)
     try {
       if (mode === 'signUp') {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: { data: { store_name: storeName, full_name: fullName } },
         })
         if (error) throw error
+
+        // Email confirmation is on by default: signUp succeeds but returns no
+        // session until the user clicks the link Supabase emails them.
+        if (data.user && !data.session) {
+          setInfo('Account created. Check your email for a confirmation link, then sign in below.')
+          setMode('signIn')
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      console.error('Auth error:', err)
+      const message = err instanceof Error && err.message ? err.message : JSON.stringify(err)
+      setError(message || 'Something went wrong')
     } finally {
       setLoading(false)
     }
@@ -36,8 +48,11 @@ export function LoginPage() {
   return (
     <div className="auth-page">
       <form className="auth-card" onSubmit={handleSubmit}>
-        <h1>KB Liquors</h1>
-        <p className="auth-subtitle">Stock &amp; POS management</p>
+        <div className="auth-brand">
+          <Logo size={52} />
+          <h1>KB Liquors</h1>
+          <p className="auth-subtitle">Stock &amp; POS management</p>
+        </div>
 
         <div className="auth-tabs">
           <button type="button" className={mode === 'signIn' ? 'active' : ''} onClick={() => setMode('signIn')}>
@@ -76,9 +91,10 @@ export function LoginPage() {
           />
         </label>
 
+        {info && <p className="auth-info">{info}</p>}
         {error && <p className="auth-error">{error}</p>}
 
-        <button type="submit" disabled={loading}>
+        <button type="submit" className="button-primary button-large" disabled={loading}>
           {loading ? 'Please wait…' : mode === 'signUp' ? 'Create account' : 'Sign in'}
         </button>
       </form>

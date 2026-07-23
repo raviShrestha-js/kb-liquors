@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import { useAppStore } from '../state/appStore'
 import { pushOutbox, pendingOutboxCount } from './push'
 import { pullAll } from './pull'
-import { pushPhotoUploads } from './photos'
+import { pushPhotoUploads, pushPhotoDeletions } from './photos'
 
 const SYNC_INTERVAL_MS = 30_000
 
@@ -17,10 +17,12 @@ async function runSync(storeId: string) {
       result = await pushOutbox()
     }
     await pushPhotoUploads()
+    await pushPhotoDeletions()
     await pullAll(storeId)
     const pendingCount = await pendingOutboxCount()
     setSync({ syncing: false, pendingCount, lastSyncedAt: new Date().toISOString() })
   } catch (err) {
+    console.error('Sync failed:', err)
     const pendingCount = await pendingOutboxCount()
     setSync({
       syncing: false,
@@ -28,6 +30,14 @@ async function runSync(storeId: string) {
       lastError: err instanceof Error ? err.message : 'Sync failed',
     })
   }
+}
+
+// Lets any component (e.g. tapping the sync badge) force a resync without
+// threading the trigger function through props/context.
+let activeTrigger: (() => void) | null = null
+
+export function manualSync() {
+  activeTrigger?.()
 }
 
 export function useSyncEngine(storeId: string | null) {
@@ -44,11 +54,13 @@ export function useSyncEngine(storeId: string | null) {
   useEffect(() => {
     if (!storeId) return
 
+    activeTrigger = triggerSync
     triggerSync()
     window.addEventListener('online', triggerSync)
     const interval = setInterval(triggerSync, SYNC_INTERVAL_MS)
 
     return () => {
+      if (activeTrigger === triggerSync) activeTrigger = null
       window.removeEventListener('online', triggerSync)
       clearInterval(interval)
     }

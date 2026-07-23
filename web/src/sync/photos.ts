@@ -29,6 +29,26 @@ export async function pushPhotoUploads(): Promise<void> {
   }
 }
 
+export async function pushPhotoDeletions(): Promise<void> {
+  const pending = await db.photoDeletions.where('status').equals('pending').toArray()
+
+  for (const deletion of pending) {
+    const { error } = await supabase.storage.from('stock-photos').remove([deletion.photoPath])
+
+    if (!error) {
+      await db.photoDeletions.delete(deletion.id)
+      continue
+    }
+
+    const attempts = deletion.attempts + 1
+    await db.photoDeletions.update(deletion.id, {
+      attempts,
+      lastError: error.message,
+      status: attempts >= MAX_ATTEMPTS ? 'failed' : 'pending',
+    })
+  }
+}
+
 const signedUrlCache = new Map<string, { url: string; expiresAt: number }>()
 
 export async function resolvePhotoUrl(photoPath: string): Promise<string | null> {

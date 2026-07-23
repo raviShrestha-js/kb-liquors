@@ -1,4 +1,4 @@
-import type { Category, StockItem, CashSession, Sale, SaleItem } from './types'
+import type { Category, StockItem, CashSession, Sale, SaleItem, BankTransaction, CashExpense } from './types'
 
 // The client generates `id` up front, and every payload sends it as both
 // `id` and `client_generated_id` — so a retried push is a no-op upsert
@@ -68,6 +68,7 @@ export function serializeSale(row: Sale) {
     payment_method: row.paymentMethod,
     status: row.status,
     created_by: row.createdBy,
+    updated_at: row.updatedAt,
   }
 }
 
@@ -82,6 +83,66 @@ export function serializeSaleItem(row: SaleItem) {
     unit_price: row.unitPrice,
     unit_cost: row.unitCost,
     line_total: row.lineTotal,
+  }
+}
+
+export function serializeBankTransaction(row: BankTransaction) {
+  return {
+    id: row.id,
+    client_generated_id: row.id,
+    store_id: row.storeId,
+    occurred_at: row.occurredAt,
+    direction: row.direction,
+    amount: row.amount,
+    category: row.category,
+    notes: row.notes,
+    related_sale_id: row.relatedSaleId,
+    created_by: row.createdBy,
+    updated_at: row.updatedAt,
+  }
+}
+
+export function deserializeBankTransaction(row: Record<string, any>): BankTransaction {
+  return {
+    id: row.id,
+    storeId: row.store_id,
+    occurredAt: row.occurred_at,
+    direction: row.direction,
+    amount: Number(row.amount),
+    category: row.category,
+    notes: row.notes,
+    relatedSaleId: row.related_sale_id,
+    createdBy: row.created_by,
+    updatedAt: row.updated_at,
+  }
+}
+
+export function serializeCashExpense(row: CashExpense) {
+  return {
+    id: row.id,
+    client_generated_id: row.id,
+    store_id: row.storeId,
+    cash_session_id: row.cashSessionId,
+    occurred_at: row.occurredAt,
+    amount: row.amount,
+    category: row.category,
+    notes: row.notes,
+    created_by: row.createdBy,
+    updated_at: row.updatedAt,
+  }
+}
+
+export function deserializeCashExpense(row: Record<string, any>): CashExpense {
+  return {
+    id: row.id,
+    storeId: row.store_id,
+    cashSessionId: row.cash_session_id,
+    occurredAt: row.occurred_at,
+    amount: Number(row.amount),
+    category: row.category,
+    notes: row.notes,
+    createdBy: row.created_by,
+    updatedAt: row.updated_at,
   }
 }
 
@@ -145,6 +206,7 @@ export function deserializeSale(row: Record<string, any>): Sale {
     paymentMethod: row.payment_method,
     status: row.status,
     createdBy: row.created_by,
+    updatedAt: row.updated_at,
   }
 }
 

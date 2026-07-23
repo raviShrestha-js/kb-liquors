@@ -8,6 +8,9 @@ import type {
   OutboxEntry,
   MetaEntry,
   PhotoUpload,
+  PhotoDeletion,
+  BankTransaction,
+  CashExpense,
 } from './types'
 
 export class KbLiquorsDB extends Dexie {
@@ -19,6 +22,9 @@ export class KbLiquorsDB extends Dexie {
   syncOutbox!: EntityTable<OutboxEntry, 'id'>
   meta!: EntityTable<MetaEntry, 'key'>
   photoUploads!: EntityTable<PhotoUpload, 'id'>
+  bankTransactions!: EntityTable<BankTransaction, 'id'>
+  photoDeletions!: EntityTable<PhotoDeletion, 'id'>
+  cashExpenses!: EntityTable<CashExpense, 'id'>
 
   constructor() {
     super('kb-liquors')
@@ -32,6 +38,25 @@ export class KbLiquorsDB extends Dexie {
       syncOutbox: '++id, status, entity, createdAt',
       meta: 'key',
       photoUploads: 'id, stockItemId, status',
+    })
+
+    // v2: IndexedDB cannot index boolean values, so `isActive` silently
+    // failed to be findable via .where() — drop it from the index and
+    // filter it in JS instead (see StockListPage/PosPage).
+    this.version(2).stores({
+      stockItems: 'id, storeId, categoryId, name',
+    })
+
+    this.version(3).stores({
+      bankTransactions: 'id, storeId, occurredAt, relatedSaleId',
+    })
+
+    this.version(4).stores({
+      photoDeletions: 'id, status',
+    })
+
+    this.version(5).stores({
+      cashExpenses: 'id, storeId, cashSessionId, occurredAt',
     })
   }
 }

@@ -7,6 +7,8 @@ import {
   deserializeCashSession,
   deserializeSale,
   deserializeSaleItem,
+  deserializeBankTransaction,
+  deserializeCashExpense,
 } from '../db/serialize'
 
 const EPOCH = new Date(0).toISOString()
@@ -44,6 +46,18 @@ export async function pullAll(storeId: string): Promise<void> {
   await pullCashSessions(storeId)
   await pullSales(storeId)
   await pullSaleItems(storeId)
+  await pullBankTransactions(storeId)
+  await pullCashExpenses(storeId)
+}
+
+function assertOk<T>(entity: string, data: T[] | null, error: { message: string } | null): asserts data is T[] {
+  if (error) {
+    console.error(`Pull failed for ${entity}:`, error)
+    throw new Error(`Pull failed for ${entity}: ${error.message}`)
+  }
+  if (!data) {
+    throw new Error(`Pull failed for ${entity}: no data returned`)
+  }
 }
 
 async function pullCategories(storeId: string) {
@@ -53,7 +67,7 @@ async function pullCategories(storeId: string) {
     .select('*')
     .eq('store_id', storeId)
     .gt('created_at', watermark)
-  if (error || !data) return
+  assertOk('categories', data, error)
 
   const rows = data.map(deserializeCategory)
   await db.categories.bulkPut(rows)
@@ -67,7 +81,7 @@ async function pullStockItems(storeId: string) {
     .select('*')
     .eq('store_id', storeId)
     .gt('updated_at', watermark)
-  if (error || !data) return
+  assertOk('stock_items', data, error)
 
   const rows = data.map(deserializeStockItem)
   await mergeMutable(db.stockItems, rows, (r) => r.version)
@@ -81,7 +95,7 @@ async function pullCashSessions(storeId: string) {
     .select('*')
     .eq('store_id', storeId)
     .gt('updated_at', watermark)
-  if (error || !data) return
+  assertOk('cash_sessions', data, error)
 
   const rows = data.map(deserializeCashSession)
   await mergeMutable(db.cashSessions, rows, (r) => new Date(r.updatedAt).getTime())
@@ -94,12 +108,12 @@ async function pullSales(storeId: string) {
     .from('sales')
     .select('*')
     .eq('store_id', storeId)
-    .gt('created_at', watermark)
-  if (error || !data) return
+    .gt('updated_at', watermark)
+  assertOk('sales', data, error)
 
   const rows = data.map(deserializeSale)
-  await db.sales.bulkPut(rows)
-  if (rows.length) await setWatermark('sales', latestTimestamp(data, 'created_at', watermark))
+  await mergeMutable(db.sales, rows, (r) => new Date(r.updatedAt).getTime())
+  if (rows.length) await setWatermark('sales', latestTimestamp(data, 'updated_at', watermark))
 }
 
 async function pullSaleItems(storeId: string) {
@@ -111,9 +125,37 @@ async function pullSaleItems(storeId: string) {
     .select('*, sales!inner(store_id)')
     .eq('sales.store_id', storeId)
     .gt('created_at', watermark)
-  if (error || !data) return
+  assertOk('sale_items', data, error)
 
   const rows = data.map(deserializeSaleItem)
   await db.saleItems.bulkPut(rows)
   if (rows.length) await setWatermark('sale_items', latestTimestamp(data, 'created_at', watermark))
+}
+
+async function pullBankTransactions(storeId: string) {
+  const watermark = await getWatermark('bank_transactions')
+  const { data, error } = await supabase
+    .from('bank_transactions')
+    .select('*')
+    .eq('store_id', storeId)
+    .gt('updated_at', watermark)
+  assertOk('bank_transactions', data, error)
+
+  const rows = data.map(deserializeBankTransaction)
+  await mergeMutable(db.bankTransactions, rows, (r) => new Date(r.updatedAt).getTime())
+  if (rows.length) await setWatermark('bank_transactions', latestTimestamp(data, 'updated_at', watermark))
+}
+
+async function pullCashExpenses(storeId: string) {
+  const watermark = await getWatermark('cash_expenses')
+  const { data, error } = await supabase
+    .from('cash_expenses')
+    .select('*')
+    .eq('store_id', storeId)
+    .gt('updated_at', watermark)
+  assertOk('cash_expenses', data, error)
+
+  const rows = data.map(deserializeCashExpense)
+  await mergeMutable(db.cashExpenses, rows, (r) => new Date(r.updatedAt).getTime())
+  if (rows.length) await setWatermark('cash_expenses', latestTimestamp(data, 'updated_at', watermark))
 }

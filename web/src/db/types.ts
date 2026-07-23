@@ -42,6 +42,7 @@ export interface CashSession {
 }
 
 export type SaleStatus = 'completed' | 'voided'
+export type PaymentMethod = 'cash' | 'bank'
 
 export interface Sale {
   id: string
@@ -52,9 +53,10 @@ export interface Sale {
   discount: number
   total: number
   costTotal: number
-  paymentMethod: 'cash'
+  paymentMethod: PaymentMethod
   status: SaleStatus
   createdBy: string | null
+  updatedAt: string
 }
 
 export interface SaleItem {
@@ -68,8 +70,42 @@ export interface SaleItem {
   lineTotal: number
 }
 
-export type SyncEntity = 'categories' | 'stock_items' | 'cash_sessions' | 'sales' | 'sale_items'
-export type SyncOperation = 'insert' | 'update'
+export type BankTransactionDirection = 'in' | 'out'
+
+export interface BankTransaction {
+  id: string
+  storeId: string
+  occurredAt: string
+  direction: BankTransactionDirection
+  amount: number
+  category: string
+  notes: string | null
+  relatedSaleId: string | null
+  createdBy: string | null
+  updatedAt: string
+}
+
+export interface CashExpense {
+  id: string
+  storeId: string
+  cashSessionId: string
+  occurredAt: string
+  amount: number
+  category: string
+  notes: string | null
+  createdBy: string | null
+  updatedAt: string
+}
+
+export type SyncEntity =
+  | 'categories'
+  | 'stock_items'
+  | 'cash_sessions'
+  | 'sales'
+  | 'sale_items'
+  | 'bank_transactions'
+  | 'cash_expenses'
+export type SyncOperation = 'insert' | 'update' | 'delete'
 export type SyncStatus = 'pending' | 'inflight' | 'done' | 'failed'
 
 export interface OutboxEntry {
@@ -96,6 +132,15 @@ export interface PhotoUpload {
   stockItemId: string
   storeId: string
   blob: Blob
+  createdAt: string
+  attempts: number
+  lastError: string | null
+  status: PhotoUploadStatus
+}
+
+export interface PhotoDeletion {
+  id: string
+  photoPath: string
   createdAt: string
   attempts: number
   lastError: string | null

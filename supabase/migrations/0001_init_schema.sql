@@ -230,15 +230,15 @@ create or replace function handle_new_user() returns trigger as $$
 declare
   new_store_id uuid;
 begin
-  insert into stores (name) values (coalesce(NEW.raw_user_meta_data->>'store_name', 'My Store'))
+  insert into public.stores (name) values (coalesce(NEW.raw_user_meta_data->>'store_name', 'My Store'))
   returning id into new_store_id;
 
-  insert into profiles (id, store_id, full_name, role)
+  insert into public.profiles (id, store_id, full_name, role)
   values (NEW.id, new_store_id, NEW.raw_user_meta_data->>'full_name', 'owner');
 
   return NEW;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = public;
 
 create trigger trg_on_auth_user_created
 after insert on auth.users

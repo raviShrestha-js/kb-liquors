@@ -10,12 +10,13 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
       manifest: {
-        name: 'KB Liquors',
+        name: 'KB Liquors — Stock & POS',
         short_name: 'KB Liquors',
-        description: 'Stock management and POS for KB Liquors',
-        theme_color: '#4f46e5',
-        background_color: '#f5f5f7',
+        description: 'Stock management and point of sale for KB Liquors',
+        theme_color: '#17140d',
+        background_color: '#f6f3ea',
         display: 'standalone',
+        orientation: 'portrait',
         start_url: '/',
         icons: [
           { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
